@@ -1,0 +1,216 @@
+
+const themeIcons = {
+    treasure: {
+        closed: "~",
+        reward: "💎",
+        trap: "💣"
+    },
+    space: {
+        closed: "*",
+        reward: "🪐",
+        trap: "☄️"
+    },
+    mystery: {
+        closed: "?",
+        reward: "🚪",
+        trap: "👻"
+    }
+};
+
+let game = {};
+let cells = [];
+
+const grid = document.getElementById("boxGrid");
+
+
+function loadSettings() {
+    const data = JSON.parse(localStorage.getItem("gameSettings"));
+    if (!data) {
+        alert("No settings found!");
+        window.location.href = "index.html";
+        return;
+    }
+    return data;
+}
+
+
+
+
+function initGame() {
+    const s = loadSettings();
+
+    game = {
+        ...s,
+        score: 0,
+        lives: 3,
+        opened: 0,
+        rewards: 0,
+        shieldUsed: false
+    };
+
+    document.getElementById("displayPlayer").innerText = s.player;
+    document.getElementById("displayGridSize").innerText = `${s.gridSize}x${s.gridSize}`;
+    document.getElementById("displayDifficulty").innerText = s.difficulty;
+    document.getElementById("displayTheme").innerText = s.theme;
+    document.getElementById("displayShield").innerText = s.shield ? "Available" : "Off";
+
+
+    createGrid();
+    updateStats();
+}
+
+
+function createGrid() {
+    grid.innerHTML = "";
+
+    const size = parseInt(game.gridSize);
+    grid.style.gridTemplateColumns = `repeat(${size}, 82px)`;
+
+    const total = size * size;
+    const traps = getTrapCount(total);
+
+    cells = [];
+
+    for (let i = 0; i < total; i++) {
+        cells.push({
+            trap: i < traps,
+            opened: false
+        });
+    }
+
+    cells.sort(() => Math.random() - 0.5);
+
+    cells.forEach((cell, index) => {
+        const div = document.createElement("div");
+        const icons = themeIcons[game.theme] || themeIcons["treasure"];
+        div.className = `box-cell ${game.theme}`;
+        div.innerText = icons.closed;
+
+        div.onclick = () => openCell(index, div);
+        grid.appendChild(div);
+    });
+
+    updateSafeLeft();
+}
+
+
+function getTrapCount(total) {
+    if (game.difficulty === "easy") return Math.floor(total * 0.2);
+    if (game.difficulty === "medium") return Math.floor(total * 0.35);
+    return Math.floor(total * 0.5);
+}
+
+
+function openCell(index, div) {
+    const cell = cells[index];
+    if (cell.opened) return;
+
+    cell.opened = true;
+    game.opened++;
+
+    const icons = themeIcons[game.theme] || themeIcons["treasure"];
+
+    if (cell.trap) {
+        div.classList.add("opened", "trap");
+        div.innerText = icons.trap;
+
+        if (game.shield && !game.shieldUsed) {
+            game.shieldUsed = true;
+            log("Shield protected you!");
+        } else {
+            game.lives--;
+            game.score -= 10;
+            log("Hit a trap!");
+        }
+    }
+    else {
+        div.classList.add("opened", "reward");
+        div.innerText = icons.reward;
+
+        let points = game.doubleReward ? 20 : 10;
+        game.score += points;
+        game.rewards++;
+
+        log("Found treasure!");
+    }
+
+    updateStats();
+    updateSafeLeft();
+    checkEnd();
+}
+
+
+function updateStats() {
+    document.getElementById("displayScore").innerText = game.score;
+    document.getElementById("displayLives").innerText = game.lives;
+    document.getElementById("displayOpened").innerText = game.opened;
+    document.getElementById("displayRewards").innerText = game.rewards;
+}
+
+
+function updateSafeLeft() {
+    const safeLeft = cells.filter(c => !c.trap && !c.opened).length;
+    document.getElementById("displaySafeLeft").innerText = safeLeft;
+}
+
+
+document.getElementById("hintBtn").onclick = () => {
+    let safe = cells
+        .map((c, i) => (!c.trap && !c.opened ? i : null))
+        .filter(i => i !== null);
+
+    if (safe.length === 0) return;
+
+    const index = safe[Math.floor(Math.random() * safe.length)];
+    grid.children[index].classList.add("hint");
+};
+
+
+document.getElementById("saveBtn").onclick = () => {
+    localStorage.setItem("gameState", JSON.stringify({ game, cells }));
+    alert("Game saved!");
+};
+
+
+document.getElementById("loadBtn").onclick = () => {
+    const data = JSON.parse(localStorage.getItem("gameState"));
+    if (!data) return;
+
+    game = data.game;
+    cells = data.cells;
+
+    createGrid();
+    updateStats();
+};
+
+
+document.getElementById("resetBtn").onclick = initGame;
+
+document.getElementById("backBtn").onclick = () => {
+    window.location.href = "index.html";
+};
+
+
+function log(msg) {
+    const logArea = document.getElementById("logArea");
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    div.innerText = msg;
+    logArea.prepend(div);
+}
+
+
+function checkEnd() {
+    const safeLeft = cells.filter(c => !c.trap && !c.opened).length;
+
+    if (game.lives <= 0) {
+        alert("Game Over!");
+    } else if (safeLeft === 0) {
+        alert("You Win!");
+    }
+}
+
+document.getElementById("startBtn").onclick = initGame;
+
+
+initGame();

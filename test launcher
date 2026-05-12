@@ -1,0 +1,97 @@
+
+const previewText = document.getElementById("previewText");
+
+const form = document.getElementById("setupForm");
+const openBtn = document.getElementById("openGameBtn");
+const saveBtn = document.getElementById("saveSettingsBtn");
+const loadBtn = document.getElementById("loadSettingsBtn");
+const resetBtn = document.getElementById("resetSettingsBtn");
+const instructionsBtn = document.getElementById("instructionsBtn");
+
+
+form.addEventListener("change", updatePreview);
+
+function getSettings() {
+    return {
+
+        player: document.getElementById("playerName").value,
+        difficulty: document.getElementById("difficulty").value,
+        gridSize: document.getElementById("gridSize").value,
+        theme: document.querySelector("input[name='theme']:checked").value,
+        showHintCount: document.getElementById("showHintCount").checked,
+        shield: document.getElementById("enableShield").checked,
+        doubleReward: document.getElementById("doubleReward").checked
+    };
+}
+
+function updatePreview() {
+    const s = getSettings();
+
+    previewText.innerText =
+        `Player: ${s.player || "(not set)"}\n` +
+        `Difficulty: ${s.difficulty}\n` +
+        `Grid: ${s.gridSize}x${s.gridSize}\n` +
+        `Theme: ${s.theme}\n` +
+        `Shield: ${s.shield}\n` +
+        `Double Reward: ${s.doubleReward}`;
+}
+
+openBtn.addEventListener("click", () => {
+    let settings = getSettings();
+
+
+    if (!settings.player || settings.player.trim() === "") {
+        let name = prompt("Please enter your player name:");
+
+
+        if (!name || name.trim() === "") {
+            alert("Player name is required to start the game!");
+            return;
+        }
+
+
+        settings.player = name.trim();
+        document.getElementById("playerName").value = settings.player;
+    }
+
+
+    localStorage.setItem("gameSettings", JSON.stringify(settings));
+    window.location.href = "game.html";
+});
+
+
+saveBtn.addEventListener("click", () => {
+    localStorage.setItem("savedSettings", JSON.stringify(getSettings()));
+    alert("Settings saved!");
+});
+
+
+loadBtn.addEventListener("click", () => {
+    const data = JSON.parse(localStorage.getItem("savedSettings"));
+    if (!data) return;
+
+    document.getElementById("playerName").value = data.player || "";
+    document.getElementById("difficulty").value = data.difficulty;
+    document.getElementById("gridSize").value = data.gridSize;
+    document.querySelector(`input[value="${data.theme}"]`).checked = true;
+
+    document.getElementById("showHintCount").checked = data.showHintCount;
+    document.getElementById("enableShield").checked = data.shield;
+    document.getElementById("doubleReward").checked = data.doubleReward;
+
+    updatePreview();
+});
+
+
+resetBtn.addEventListener("click", () => {
+    form.reset();
+    previewText.innerText = "No settings selected yet.";
+});
+
+
+instructionsBtn.addEventListener("click", () => {
+    window.location.href = "instructions.html";
+});
+
+
+updatePreview();
